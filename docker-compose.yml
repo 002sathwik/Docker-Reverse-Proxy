@@ -5,11 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command:  bun dev
+    command:  bun run index.ts
     ports:
       - "8080:8080"
       - "80:80"
     network_mode: bridge  # Corrected spacing and syntax
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock  # Fixed the path for docker.sock
-      - .:/app  # Corrected indentation for volumes
+      - ./src:/app  # Corrected indentation for volumes
