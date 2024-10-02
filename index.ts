@@ -1,12 +1,13 @@
-import { stat } from "fs";
-
 const http = require('http');
 const express = require('express');
 const Docker = require('dockerode');
+const httpProxy = require('http-proxy');
+
+
+
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
-
-
+const proxy = httpProxy.createProxy({});
 const db = new Map();
 
 
@@ -50,9 +51,26 @@ docker.getEvents(function (err: any, stream: any) {
     })
 })
 
+const reverseProxyApp = express();
 
 
+reverseProxyApp.use(function (req: any, res: any) {
 
+    const hostname = req.hostname;
+    const subdomain = hostname.split('.')[0];
+    if (!db.has(subdomain)) {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Container not found'
+        })
+    }
+    const { containerIP, defaultPort } = db.get(subdomain);
+
+    const proxy = `http://${containerIP}:${defaultPort}`;
+    console.log(`Forwarding ${hostname} request to ---> ${proxy}`);
+});
+
+const reverseProxy = http.createServer()
 
 
 
