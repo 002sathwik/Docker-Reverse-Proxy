@@ -9,3 +9,13 @@
 2.docker  run -itd --rm --name apple nginx 
 
 3.docker run -itd --rm  --name bannana  httpd 
+
+
+
+
+ running 
+  - docker compose build 
+  - docker  compose up
+
+
+Now we can run any container and access it without port mapping; the IP will be provided by the server
