@@ -12,64 +12,68 @@ docker.getEvents(function (err: any, stream: any) {
         console.log(`Error in getting events ${err}`);
     }
 
-    stream.on('data', async (chunk: any) => {
-        if (!chunk) {
-            return
-        }
-        const event = JSON.parse(chunk.toString());
-
-        if (event.Type === 'container' && event.Action === 'start') {
-            const container = docker.getContainer(event.id);
-
-          
-            const containerInfo = await container.inspect().catch((error: any) => {
-                console.error(`Failed to inspect container ${event.id}: ${error.message}`);
-                return null;
-            });
-
-            if (!containerInfo) return;
-
-            const containerName = containerInfo.Name.substring(1); 
-            const containerIP = containerInfo.NetworkSettings.IPAddress;
-
-    
-            if (!containerIP) {
-                console.error(`No IP found for container ${containerName}`);
-                return;
+    try {
+        stream.on('data', async (chunk: any) => {
+            if (!chunk) {
+                return
             }
+            const event = JSON.parse(chunk.toString());
 
-      
-            const exposedPort = containerInfo.Config.ExposedPorts ? Object.keys(containerInfo.Config.ExposedPorts) : [];
-            let defaultPort = null;
+            if (event.Type === 'container' && event.Action === 'start') {
+                const container = docker.getContainer(event.id);
 
-            if (exposedPort.length > 0) {
-                const [port, type] = exposedPort[0].split('/');
 
-            
-                if (!port || !type) {
-                    console.error(`Malformed exposed port for container ${containerName}`);
+                const containerInfo = await container.inspect().catch((error: any) => {
+                    console.error(`Failed to inspect container ${event.id}: ${error.message}`);
+                    return null;
+                });
+
+                if (!containerInfo) return;
+
+                const containerName = containerInfo.Name.substring(1);
+                const containerIP = containerInfo.NetworkSettings.IPAddress;
+
+
+                if (!containerIP) {
+                    console.error(`No IP found for container ${containerName}`);
                     return;
                 }
 
-                if (type === "tcp") {
-                    defaultPort = port;
-                    console.log(`Container ${containerName} is running on ${containerIP}:${port}`);
+
+                const exposedPort = containerInfo.Config.ExposedPorts ? Object.keys(containerInfo.Config.ExposedPorts) : [];
+                let defaultPort = null;
+
+                if (exposedPort.length > 0) {
+                    const [port, type] = exposedPort[0].split('/');
+
+
+                    if (!port || !type) {
+                        console.error(`Malformed exposed port for container ${containerName}`);
+                        return;
+                    }
+
+                    if (type === "tcp") {
+                        defaultPort = port;
+                        console.log(`Container ${containerName} is running on ${containerIP}:${port}`);
+                    }
                 }
-            }
 
-            if (!defaultPort) {
-                console.error(`No valid TCP port exposed for container ${containerName}`);
-                return;
-            }
+                if (!defaultPort) {
+                    console.error(`No valid TCP port exposed for container ${containerName}`);
+                    return;
+                }
 
-            console.log(`Registering container ${containerName}.localhost ---> http://${containerIP}:${defaultPort}`);
-            db.set(containerName, {
-                containerName,
-                containerIP,
-                defaultPort
-            });
-        }
-    });
+                console.log(`Registering container ${containerName}.localhost ---> http://${containerIP}:${defaultPort}`);
+                db.set(containerName, {
+                    containerName,
+                    containerIP,
+                    defaultPort
+                });
+            }
+        });
+    } catch (error) {
+        console.log(`Error in getting events ${error}`);
+    }
 });
 
 const reverseProxyApp = express();
@@ -89,10 +93,10 @@ reverseProxyApp.use(function (req: any, res: any) {
 
     const target = `http://${containerIP}:${defaultPort}`;
 
-    // Error: Incorrect logging of proxy
-    console.log(`Forwarding ${hostname} request to ---> ${target}`); // Replace proxy with actual target
 
-    return proxy.web(req, res, { target, changeOrigin: true }, (err: any) => {
+    console.log(`Forwarding ${hostname} request to ---> ${target}`);
+
+    return proxy.web(req, res, { target, changeOrigin: true, ws: true }, (err: any) => {
         if (err) {
             console.error(`Error forwarding request: ${err.message}`);
             res.status(500).send('Proxy error');
@@ -101,6 +105,30 @@ reverseProxyApp.use(function (req: any, res: any) {
 });
 
 const reverseProxy = http.createServer(reverseProxyApp);
+
+reverseProxy.on('upgrade', function (req: any, socket: any, head: any) {
+    const hostname = req.headers.host.split(':')[0];
+    const subdomain = hostname.split('.')[0];
+
+    if (!db.has(subdomain)) {
+        return socket.destroy();
+    }
+
+    const { containerIP, defaultPort } = db.get(subdomain);
+
+    const target = `http://${containerIP}:${defaultPort}`;
+
+
+    console.log(`Forwarding ${hostname} request to ---> ${target}`);
+
+    return proxy.ws(req, socket, head, { target: target, ws: true }, (err: any) => {
+        if (err) {
+            console.error(`Error forwarding websocket: ${err.message}`);
+            socket.destroy();
+        }
+    });
+});
+
 
 const managementAPI = express();
 managementAPI.use(express.json());
