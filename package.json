@@ -3,9 +3,18 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.7.4"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/dockerode": "^3.3.31",
+    "@types/http-proxy": "^1.17.15",
+    "dockerode": "^4.0.2",
+    "express": "^4.21.0",
+    "http-proxy": "^1.18.1"
   }
 }
