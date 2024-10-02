@@ -2,19 +2,24 @@
   "name": "docker-rev-proxy-",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+ "dev": "bun run index.ts"
+
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.7.4"
+    "@types/node": "^22.7.4",
+    "@types/http-proxy": "^1.17.15",
+    "nodemon": "^3.1.7"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@types/dockerode": "^3.3.31",
-    "@types/http-proxy": "^1.17.15",
     "dockerode": "^4.0.2",
     "express": "^4.21.0",
-    "http-proxy": "^1.18.1"
+    "http-proxy": "^1.18.1",
+    "nodemon": "^3.1.7"
   }
 }

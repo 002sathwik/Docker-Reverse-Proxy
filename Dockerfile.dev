@@ -1,0 +1,22 @@
+FROM docker.io/oven/bun:latest
+
+# Install dependencies
+RUN apt-get update && apt-get install -y python3 python3-pip
+
+# Set Python environment variable
+ENV PYTHON=/usr/bin/python3
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json bun.lockb ./
+
+# Install dependencies using bun with retry
+RUN for i in 1 2 3; do bun install && break || sleep 5; done
+
+# Copy the rest of your application code
+COPY . .
+
+# Command to run your application
+CMD ["bun", "start"]
