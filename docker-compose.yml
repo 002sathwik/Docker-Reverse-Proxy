@@ -9,7 +9,7 @@ services:
     ports:
       - "8080:8080"
       - "80:80"
-    network_mode: bridge  # Corrected spacing and syntax
+    network_mode: bridge 
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock  # Fixed the path for docker.sock
-      - ./src:/app  # Corrected indentation for volumes
+      - /var/run/docker.sock:/var/run/docker.sock 
+      - ./src:/app  
